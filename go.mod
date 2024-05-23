@@ -1,4 +1,4 @@
-module restful_api_tast_management_system
+module restful_api_task_management_system
 
 go 1.22.3
 

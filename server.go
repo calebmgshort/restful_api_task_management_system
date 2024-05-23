@@ -16,13 +16,19 @@ type Task struct {
 	Status string `json:"status"`
 }
 
+// type Server struct {
+// 	tasks map[int]Task
+// 	nextId int
+// 	mu sync.Mutex
+// }
+
 var (
 	tasks  = make(map[int]Task)
 	nextID = 1
 	mu     sync.Mutex
 )
 
-// TODO: filter input, making sure the title and description are strings
+// TODO: filter input, making sure the title and description are strings and not empty
 func createTask(responseWriter http.ResponseWriter, request *http.Request) {
 	var task Task
 	json.NewDecoder(request.Body).Decode(&task)
@@ -77,7 +83,7 @@ func updateTask(responseWriter http.ResponseWriter, request *http.Request) {
 			return
 	}
 	
-	json.NewEncoder(responseWriter).Encode(request)
+	json.NewEncoder(responseWriter).Encode(updatedTask)
 }
 
 func deleteTask(responseWriter http.ResponseWriter, router *http.Request) {
@@ -103,13 +109,18 @@ func getTasks(responseWriter http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(responseWriter).Encode(taskList)
 }
 
-func main() {
+func createRouter() *chi.Mux {
 	router := chi.NewRouter()
 	router.Post("/tasks", createTask)
 	router.Get("/tasks/{id}", getTask)
 	router.Put("/tasks/{id}", updateTask)
 	router.Delete("/tasks/{id}", deleteTask)
 	router.Get("/tasks", getTasks)
+	return router
+}
+
+func main() {
+	router := createRouter()
 	fmt.Println("listening on localhost port 8080")
 	http.ListenAndServe(":8080", router)
 }
