@@ -29,6 +29,7 @@ func (serverState *ServerState) createTask(responseWriter http.ResponseWriter, r
 
 	// TODO: Return unique error messages for title and description invalid
 	if task.Title == "" || task.Description == "" {
+		// TODO: I'm not sure if this is the right status code for this
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -48,7 +49,6 @@ func (serverState *ServerState) createTask(responseWriter http.ResponseWriter, r
 func (serverState *ServerState) getTask(responseWriter http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(request, "id"))
 
-	// TODO: reconsider if I really need to use the mutex if the transaction is only a single line
 	serverState.mu.Lock()
 	task, ok := serverState.tasks[id]
 	serverState.mu.Unlock()
