@@ -23,10 +23,15 @@ type ServerState struct {
 	mu     sync.Mutex
 }
 
-// TODO: filter input, making sure the title and description are strings and not empty
 func (serverState *ServerState) createTask(responseWriter http.ResponseWriter, request *http.Request) {
 	var task Task
 	json.NewDecoder(request.Body).Decode(&task)
+
+	// TODO: Return unique error messages for title and description invalid
+	if task.Title == "" || task.Description == "" {
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	task.Status = "Pending"
 
@@ -56,37 +61,47 @@ func (serverState *ServerState) getTask(responseWriter http.ResponseWriter, requ
 	json.NewEncoder(responseWriter).Encode(task)
 }
 
-// TODO: filter input
 func (serverState *ServerState) updateTask(responseWriter http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(request, "id"))
+
 	var updatedTask Task
 	json.NewDecoder(request.Body).Decode(&updatedTask)
 
 	serverState.mu.Lock()
-	existingTask, ok := serverState.tasks[id]
-	if ok {
-		if updatedTask.Status != "Pending" && updatedTask.Status != "In Progress" && updatedTask.Status != "Completed" {
-			updatedTask.Status = existingTask.Status
-		}
-		updatedTask.ID = id
-		serverState.tasks[id] = updatedTask
-	}
-	serverState.mu.Unlock()
-
+	defer serverState.mu.Unlock()
+	_, ok := serverState.tasks[id]
 	if !ok {
 		http.NotFound(responseWriter, request)
 		return
 	}
 
+	// TODO: Return unique error messages for invalid title, description and status
+	if updatedTask.Title == "" || updatedTask.Description == "" ||
+		(updatedTask.Status != "Pending" && updatedTask.Status != "In Progress" && updatedTask.Status != "Completed") {
+		// TODO: I'm not sure if this is the right status code for this
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	updatedTask.ID = id
+	serverState.tasks[id] = updatedTask
+
 	json.NewEncoder(responseWriter).Encode(updatedTask)
 }
 
-func (serverState *ServerState) deleteTask(responseWriter http.ResponseWriter, router *http.Request) {
-	id, _ := strconv.Atoi(chi.URLParam(router, "id"))
+func (serverState *ServerState) deleteTask(responseWriter http.ResponseWriter, request *http.Request) {
+	id, _ := strconv.Atoi(chi.URLParam(request, "id"))
 
 	serverState.mu.Lock()
+	defer serverState.mu.Unlock()
+
+	_, ok := serverState.tasks[id]
+	if !ok {
+		http.NotFound(responseWriter, request)
+		return
+	}
+
 	delete(serverState.tasks, id)
-	serverState.mu.Unlock()
 
 	responseWriter.WriteHeader(http.StatusNoContent)
 }
