@@ -3,119 +3,120 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
 	"sync"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type Task struct {
-	ID   int    `json:"id"`
-	Title string `json:"title"`
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
 	Description string `json:"description"`
-	Status string `json:"status"`
+	Status      string `json:"status"`
 }
 
-// type Server struct {
-// 	tasks map[int]Task
-// 	nextId int
-// 	mu sync.Mutex
-// }
-
-var (
-	tasks  = make(map[int]Task)
-	nextID = 1
+type ServerState struct {
+	tasks  map[int]Task
+	nextID int
 	mu     sync.Mutex
-)
+}
 
 // TODO: filter input, making sure the title and description are strings and not empty
-func createTask(responseWriter http.ResponseWriter, request *http.Request) {
+func (serverState *ServerState) createTask(responseWriter http.ResponseWriter, request *http.Request) {
 	var task Task
 	json.NewDecoder(request.Body).Decode(&task)
-	
+
 	task.Status = "Pending"
 
-	mu.Lock()
-	task.ID = nextID
-	tasks[nextID] = task
-	nextID++
-	mu.Unlock()
+	serverState.mu.Lock()
+	task.ID = serverState.nextID
+	serverState.tasks[serverState.nextID] = task
+	serverState.nextID++
+	serverState.mu.Unlock()
 
 	responseWriter.WriteHeader(http.StatusCreated)
 	json.NewEncoder(responseWriter).Encode(task)
 }
 
-func getTask(responseWriter http.ResponseWriter, request *http.Request) {
+func (serverState *ServerState) getTask(responseWriter http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(request, "id"))
 
 	// TODO: reconsider if I really need to use the mutex if the transaction is only a single line
-	mu.Lock()
-	task, ok := tasks[id]
-	mu.Unlock()
+	serverState.mu.Lock()
+	task, ok := serverState.tasks[id]
+	serverState.mu.Unlock()
 
 	if !ok {
-			http.NotFound(responseWriter, request)
-			return
+		http.NotFound(responseWriter, request)
+		return
 	}
 
 	json.NewEncoder(responseWriter).Encode(task)
 }
 
 // TODO: filter input
-func updateTask(responseWriter http.ResponseWriter, request *http.Request) {
+func (serverState *ServerState) updateTask(responseWriter http.ResponseWriter, request *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(request, "id"))
 	var updatedTask Task
 	json.NewDecoder(request.Body).Decode(&updatedTask)
 
-	mu.Lock()
-	existingTask, ok := tasks[id]
+	serverState.mu.Lock()
+	existingTask, ok := serverState.tasks[id]
 	if ok {
-			if(updatedTask.Status != "Pending" && updatedTask.Status != "In Progress" && updatedTask.Status != "Completed") {
-				updatedTask.Status = existingTask.Status
-			}
-			updatedTask.ID = id
-			tasks[id] = updatedTask
+		if updatedTask.Status != "Pending" && updatedTask.Status != "In Progress" && updatedTask.Status != "Completed" {
+			updatedTask.Status = existingTask.Status
+		}
+		updatedTask.ID = id
+		serverState.tasks[id] = updatedTask
 	}
-	mu.Unlock()
+	serverState.mu.Unlock()
 
 	if !ok {
-			http.NotFound(responseWriter, request)
-			return
+		http.NotFound(responseWriter, request)
+		return
 	}
-	
+
 	json.NewEncoder(responseWriter).Encode(updatedTask)
 }
 
-func deleteTask(responseWriter http.ResponseWriter, router *http.Request) {
+func (serverState *ServerState) deleteTask(responseWriter http.ResponseWriter, router *http.Request) {
 	id, _ := strconv.Atoi(chi.URLParam(router, "id"))
 
-	mu.Lock()
-	delete(tasks, id)
-	mu.Unlock()
+	serverState.mu.Lock()
+	delete(serverState.tasks, id)
+	serverState.mu.Unlock()
 
 	responseWriter.WriteHeader(http.StatusNoContent)
 }
 
-func getTasks(responseWriter http.ResponseWriter, request *http.Request) {
+func (serverState *ServerState) getTasks(responseWriter http.ResponseWriter, request *http.Request) {
 
 	// Convert map to list
-	mu.Lock()
-	taskList := make([]Task, 0, len(tasks))
-	for  _, task := range tasks {
+	serverState.mu.Lock()
+	taskList := make([]Task, 0, len(serverState.tasks))
+	for _, task := range serverState.tasks {
 		taskList = append(taskList, task)
 	}
-	mu.Unlock()
+	serverState.mu.Unlock()
 
 	json.NewEncoder(responseWriter).Encode(taskList)
 }
 
 func createRouter() *chi.Mux {
 	router := chi.NewRouter()
-	router.Post("/tasks", createTask)
-	router.Get("/tasks/{id}", getTask)
-	router.Put("/tasks/{id}", updateTask)
-	router.Delete("/tasks/{id}", deleteTask)
-	router.Get("/tasks", getTasks)
+
+	serverState := &ServerState{
+		tasks:  make(map[int]Task),
+		nextID: 1,
+	}
+
+	router.Post("/tasks", serverState.createTask)
+	router.Get("/tasks/{id}", serverState.getTask)
+	router.Put("/tasks/{id}", serverState.updateTask)
+	router.Delete("/tasks/{id}", serverState.deleteTask)
+	router.Get("/tasks", serverState.getTasks)
 	return router
 }
 

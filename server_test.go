@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
+
 	// "fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func TestCreateTask(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusCreated {
-			t.Errorf("Expected status 201 Created, got %d", res.Code)
+		t.Errorf("Expected status 201 Created, got %d", res.Code)
 	}
 
 	var createdTask Task
@@ -57,7 +58,7 @@ func TestGetTask(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusOK {
-			t.Errorf("Expected status 200 OK, got %d", res.Code)
+		t.Errorf("Expected status 200 OK, got %d", res.Code)
 	}
 
 	var fetchedTask Task
@@ -66,7 +67,7 @@ func TestGetTask(t *testing.T) {
 	expectedTask := Task{ID: 1, Title: title, Description: description, Status: "Pending"}
 
 	if fetchedTask != expectedTask {
-			t.Errorf("Expected task %+v, got %+v", expectedTask, fetchedTask)
+		t.Errorf("Expected task %+v, got %+v", expectedTask, fetchedTask)
 	}
 }
 
@@ -92,7 +93,7 @@ func TestUpdateTask(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusOK {
-			t.Errorf("Expected status 200 OK, got %d", res.Code)
+		t.Errorf("Expected status 200 OK, got %d", res.Code)
 	}
 
 	var updatedTask Task
@@ -101,7 +102,7 @@ func TestUpdateTask(t *testing.T) {
 	expectedTask := Task{ID: 1, Title: task.Title, Description: task.Description, Status: task.Status}
 
 	if updatedTask != expectedTask {
-			t.Errorf("Expected task %+v, got %+v", expectedTask, updatedTask)
+		t.Errorf("Expected task %+v, got %+v", expectedTask, updatedTask)
 	}
 }
 
@@ -122,7 +123,7 @@ func TestDeleteItem(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusNoContent {
-			t.Errorf("Expected status 204 No Content, got %d", res.Code)
+		t.Errorf("Expected status 204 No Content, got %d", res.Code)
 	}
 
 	// Try to get the deleted item
@@ -131,7 +132,7 @@ func TestDeleteItem(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusNotFound {
-			t.Errorf("Expected status 404 Not Found, got %d", res.Code)
+		t.Errorf("Expected status 404 Not Found, got %d", res.Code)
 	}
 }
 
@@ -155,7 +156,7 @@ func TestGetTasks(t *testing.T) {
 	router.ServeHTTP(res, req)
 
 	if res.Code != http.StatusOK {
-			t.Errorf("Expected status 200 OK, got %d", res.Code)
+		t.Errorf("Expected status 200 OK, got %d", res.Code)
 	}
 
 	var fetchedTasks []Task
